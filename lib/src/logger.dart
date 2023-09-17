@@ -12,6 +12,12 @@ typedef LogCallback = void Function(LogEvent event);
 
 typedef OutputCallback = void Function(OutputEvent event);
 
+typedef OnErrorCallback = void Function({
+  Object? e,
+  StackTrace? s,
+  String? reason,
+});
+
 /// Use instances of logger to send log messages to the [LogPrinter].
 class Logger {
   /// The current logging level of the app.
@@ -32,6 +38,10 @@ class Logger {
 
   static final Set<OutputCallback> _outputCallbacks = {};
 
+  final OnErrorCallback? _onErrorCallback;
+
+  final OnErrorCallback? _onFatalCallback;
+
   final LogFilter _filter;
   final LogPrinter _printer;
   final LogOutput _output;
@@ -47,9 +57,13 @@ class Logger {
     LogPrinter? printer,
     LogOutput? output,
     Level? level,
+    OnErrorCallback? onError,
+    OnErrorCallback? onFatal,
   })  : _filter = filter ?? defaultFilter(),
         _printer = printer ?? defaultPrinter(),
-        _output = output ?? defaultOutput() {
+        _output = output ?? defaultOutput(),
+        _onErrorCallback = onError,
+        _onFatalCallback = onFatal {
     _filter.init();
     if (level != null) {
       _filter.level = level;
@@ -82,43 +96,48 @@ class Logger {
 
   /// Log a message at level [Level.debug].
   void d(
-    dynamic message, {
-    DateTime? time,
+    dynamic message, [
     Object? error,
     StackTrace? stackTrace,
-  }) {
+    DateTime? time,
+  ]) {
     log(Level.debug, message, time: time, error: error, stackTrace: stackTrace);
   }
 
   /// Log a message at level [Level.info].
   void i(
-    dynamic message, {
-    DateTime? time,
+    dynamic message, [
     Object? error,
     StackTrace? stackTrace,
-  }) {
+    DateTime? time,
+  ]) {
     log(Level.info, message, time: time, error: error, stackTrace: stackTrace);
   }
 
   /// Log a message at level [Level.warning].
   void w(
-    dynamic message, {
-    DateTime? time,
+    dynamic message, [
     Object? error,
     StackTrace? stackTrace,
-  }) {
+    DateTime? time,
+  ]) {
     log(Level.warning, message,
         time: time, error: error, stackTrace: stackTrace);
   }
 
   /// Log a message at level [Level.error].
   void e(
-    dynamic message, {
-    DateTime? time,
+    dynamic message, [
     Object? error,
     StackTrace? stackTrace,
-  }) {
+    DateTime? time,
+  ]) {
     log(Level.error, message, time: time, error: error, stackTrace: stackTrace);
+    _onErrorCallback?.call(
+      e: error,
+      s: stackTrace,
+      reason: message.toString(),
+    );
   }
 
   /// Log a message at level [Level.wtf].
@@ -130,17 +149,22 @@ class Logger {
     Object? error,
     StackTrace? stackTrace,
   }) {
-    f(message, time: time, error: error, stackTrace: stackTrace);
+    f(message, error, stackTrace, time);
   }
 
   /// Log a message at level [Level.fatal].
   void f(
-    dynamic message, {
-    DateTime? time,
+    dynamic message, [
     Object? error,
     StackTrace? stackTrace,
-  }) {
+    DateTime? time,
+  ]) {
     log(Level.fatal, message, time: time, error: error, stackTrace: stackTrace);
+    _onFatalCallback?.call(
+      e: error,
+      s: stackTrace,
+      reason: message.toString(),
+    );
   }
 
   /// Log a message with [level].
